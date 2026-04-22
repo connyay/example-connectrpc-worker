@@ -1,0 +1,12 @@
+[package]
+name = "workers-connectrpc"
+version = "0.1.0"
+edition = "2021"
+authors = ["Connor Hindley <conn.hindley@gmail.com>"]
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+worker = { version = "0.8" }
+worker-macros = { version = "0.8" }
