@@ -4,3 +4,9 @@ compatibility_date = "2026-04-22"
 
 [build]
 command = "cargo install -q \"worker-build@^0.8\" && worker-build --release --panic-unwind"
+
+# D1 binding for the Todo service. Migrations live under `./migrations`.
+[[d1_databases]]
+binding = "DB"
+database_name = "workers-connectrpc-todos"
+migrations_dir = "migrations"

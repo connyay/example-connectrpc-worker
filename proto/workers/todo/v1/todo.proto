@@ -1,0 +1,59 @@
+syntax = "proto3";
+
+package workers.todo.v1;
+
+service TodoService {
+  rpc CreateTodo(CreateTodoRequest) returns (CreateTodoResponse);
+  rpc GetTodo(GetTodoRequest) returns (GetTodoResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc ListTodos(ListTodosRequest) returns (ListTodosResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+  rpc UpdateTodo(UpdateTodoRequest) returns (UpdateTodoResponse);
+  rpc DeleteTodo(DeleteTodoRequest) returns (DeleteTodoResponse);
+}
+
+message Todo {
+  int64 id = 1;
+  string text = 2;
+  bool done = 3;
+}
+
+message CreateTodoRequest {
+  string text = 1;
+}
+
+message CreateTodoResponse {
+  Todo todo = 1;
+}
+
+message GetTodoRequest {
+  int64 id = 1;
+}
+
+message GetTodoResponse {
+  Todo todo = 1;
+}
+
+message ListTodosRequest {}
+
+message ListTodosResponse {
+  repeated Todo todos = 1;
+}
+
+message UpdateTodoRequest {
+  int64 id = 1;
+  optional string text = 2;
+  optional bool done = 3;
+}
+
+message UpdateTodoResponse {
+  Todo todo = 1;
+}
+
+message DeleteTodoRequest {
+  int64 id = 1;
+}
+
+message DeleteTodoResponse {}

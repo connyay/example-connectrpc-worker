@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package workers.reverse.v1;
+
+service ReverseService {
+  rpc Reverse(ReverseRequest) returns (ReverseResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message ReverseRequest {
+  string text = 1;
+}
+
+message ReverseResponse {
+  string reversed = 1;
+}

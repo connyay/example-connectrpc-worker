@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package workers.greet.v1;
+
+service GreetService {
+  rpc Greet(GreetRequest) returns (GreetResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message GreetRequest {
+  string name = 1;
+}
+
+message GreetResponse {
+  string greeting = 1;
+}
