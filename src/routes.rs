@@ -53,9 +53,7 @@ fn oauth_callback(query: Option<&str>) -> Response<ConnectRpcBody> {
 
 fn parse_query(query: &str) -> impl Iterator<Item = (&str, &str)> {
     // No percent-decoding; a production OAuth callback would need it.
-    query
-        .split('&')
-        .filter_map(|pair| pair.split_once('='))
+    query.split('&').filter_map(|pair| pair.split_once('='))
 }
 
 #[cfg(test)]
@@ -93,8 +91,7 @@ mod tests {
 
     #[test]
     fn oauth_callback_echoes_code_and_state() {
-        let resp =
-            try_handle(&request(Method::GET, "/oauth/callback?code=abc&state=xyz")).unwrap();
+        let resp = try_handle(&request(Method::GET, "/oauth/callback?code=abc&state=xyz")).unwrap();
         let (status, body) = read_body(resp);
         assert_eq!(status, StatusCode::OK);
         assert_eq!(body, "authorized: code=abc, state=xyz");

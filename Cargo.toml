@@ -15,7 +15,7 @@ worker-macros = { version = "0.8", features = ["http"] }
 # ConnectRPC core — disable the default `zstd` and `streaming` features which
 # pull in C bindings / platform bits that don't build on wasm32-unknown-unknown.
 # Keep `gzip` (pure-Rust via miniz_oxide) for response compression.
-connectrpc = { path = "/Users/connorhindley/code/anthropics/connect-rust/connectrpc", default-features = false, features = ["gzip"] }
+connectrpc = { version = "0.3", default-features = false, features = ["gzip"] }
 
 # Protobuf runtime used by generated code.
 buffa = { version = "0.3", features = ["json"] }
@@ -36,4 +36,4 @@ futures = "0.3"
 tower = { version = "0.5", features = ["util"] }
 
 [build-dependencies]
-connectrpc-build = { path = "/Users/connorhindley/code/anthropics/connect-rust/connectrpc-build" }
+connectrpc-build = { version = "0.3" }
