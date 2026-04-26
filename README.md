@@ -1,4 +1,4 @@
-# workers-connectrpc
+# example-connectrpc-worker
 
 A Rust Cloudflare Worker that serves [ConnectRPC](https://connectrpc.com/)
 over HTTP, using [`connect-rust`](https://github.com/anthropics/connect-rust)
