@@ -70,16 +70,28 @@ wrangler.toml                                   # worker + D1 binding config
 
 ## Running tests
 
+Two layers:
+
 ```
-cargo test
+cargo test                       # native unit tests (handlers, store, tower layer)
+cd integration-tests && npm test # wasm worker under miniflare, exercised through a
+                                 # generated TypeScript Connect client
 ```
 
-All service handlers, the `TodoStore` in-memory impl, and the tower layer
-are unit-tested on the native target (23 tests). The D1 store is
+Native unit tests cover service handlers, the `TodoStore` in-memory impl,
+and the tower layer (23 tests). The D1 store is
 `#[cfg(target_arch = "wasm32")]` only. Its futures wrap `JsFuture` with
 `worker::send::IntoSendFuture::into_send()` to satisfy the `+ Send` bound
 on the generated service traits, and that machinery only lines up on
 wasm32.
+
+The integration harness builds the wasm worker, loads it into miniflare
+with a real D1 binding, and drives it through a Connect-ES client
+generated from the same `proto/` tree the Rust server consumes — so each
+test runs an end-to-end request: protobuf-es encode → Connect HTTP envelope
+→ wasm fetch handler → connectrpc dispatch → Rust handler → wasm reply →
+protobuf-es decode. Both binary and JSON codecs are exercised. See
+[`integration-tests/`](integration-tests/) for layout.
 
 ## Building for Cloudflare
 

@@ -172,8 +172,8 @@ mod d1 {
     // `SendFuture` so the outer async state machine satisfies the `+ Send`
     // bound on `TodoStore`'s method futures. Workers is single-threaded, so
     // the `unsafe impl Send` on `SendFuture` is sound in this runtime.
-    use worker::D1Database;
     use worker::send::IntoSendFuture;
+    use worker::{D1Database, D1Type};
 
     pub const SCHEMA: &str = "CREATE TABLE IF NOT EXISTS todos (\
         id INTEGER PRIMARY KEY AUTOINCREMENT,\
@@ -224,12 +224,19 @@ mod d1 {
         StoreError::new(format!("d1 {context}: {err}"))
     }
 
+    // `D1Type::Integer` is `i32` in worker-rs 0.8, so route i64 ids through
+    // `Real` to preserve JS Number's 53-bit integer range. SQLite's column
+    // affinity stores whole-valued reals as INTEGER.
+    fn id_arg<'a>(id: i64) -> D1Type<'a> {
+        D1Type::Real(id as f64)
+    }
+
     impl TodoStore for D1TodoStore {
         async fn create(&self, text: String) -> Result<TodoRecord, StoreError> {
             let row: TodoRow = self
                 .db
                 .prepare("INSERT INTO todos (text) VALUES (?) RETURNING id, text, done")
-                .bind(&[text.into()])
+                .bind_refs(&[D1Type::Text(&text)])
                 .map_err(|e| map_err("bind create", e))?
                 .first(None)
                 .into_send()
@@ -243,7 +250,7 @@ mod d1 {
             let row: Option<TodoRow> = self
                 .db
                 .prepare("SELECT id, text, done FROM todos WHERE id = ?")
-                .bind(&[id.into()])
+                .bind_refs(&[id_arg(id)])
                 .map_err(|e| map_err("bind get", e))?
                 .first(None)
                 .into_send()
@@ -272,9 +279,10 @@ mod d1 {
             done: Option<bool>,
         ) -> Result<Option<TodoRecord>, StoreError> {
             // COALESCE lets a single statement handle any combination of
-            // partial field updates — NULL params pass through the existing
+            // partial field updates — Null params pass through the existing
             // column value.
-            let done_param = done.map(|b| if b { 1i64 } else { 0 });
+            let text_arg = text.as_deref().map_or(D1Type::Null, D1Type::Text);
+            let done_arg = done.map_or(D1Type::Null, D1Type::Boolean);
             let row: Option<TodoRow> = self
                 .db
                 .prepare(
@@ -284,7 +292,7 @@ mod d1 {
                      WHERE id = ? \
                      RETURNING id, text, done",
                 )
-                .bind(&[text.into(), done_param.into(), id.into()])
+                .bind_refs(&[text_arg, done_arg, id_arg(id)])
                 .map_err(|e| map_err("bind update", e))?
                 .first(None)
                 .into_send()
@@ -297,7 +305,7 @@ mod d1 {
             let result = self
                 .db
                 .prepare("DELETE FROM todos WHERE id = ?")
-                .bind(&[id.into()])
+                .bind_refs(&[id_arg(id)])
                 .map_err(|e| map_err("bind delete", e))?
                 .run()
                 .into_send()
