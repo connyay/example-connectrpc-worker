@@ -1,3 +1,6 @@
+[workspace]
+members = [".", "clients/clock-cli", "clients/echo-cli", "clients/heartbeat-cli"]
+
 [package]
 name = "workers-connectrpc"
 version = "0.1.0"
@@ -37,3 +40,11 @@ tower = { version = "0.5", features = ["util"] }
 
 [build-dependencies]
 connectrpc-build = { version = "0.3" }
+
+# wasm32 spawn fix from connyay/connect-rust#wasm32-bidi-spawn-local —
+# tokio::spawn → wasm_bindgen_futures::spawn_local in the bidi /
+# client-streaming body reader.
+[patch.crates-io]
+connectrpc = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }
+connectrpc-build = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }
+connectrpc-codegen = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }

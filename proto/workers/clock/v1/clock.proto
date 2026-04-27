@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package workers.clock.v1;
+
+service ClockService {
+  // Emits `count` Ticks with sequential numbers (0..count), then closes.
+  rpc Tick(TickRequest) returns (stream TickResponse) {
+    option idempotency_level = NO_SIDE_EFFECTS;
+  }
+}
+
+message TickRequest {
+  uint32 count = 1;
+}
+
+message TickResponse {
+  uint32 sequence = 1;
+}

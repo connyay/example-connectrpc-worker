@@ -16,7 +16,10 @@ use worker::{Context, Env, HttpRequest, event};
 
 use buffa::view::OwnedView;
 
+use proto::workers::clock::v1::ClockServiceExt;
+use proto::workers::echo::v1::EchoServiceExt;
 use proto::workers::greet::v1::{GreetRequestView, GreetResponse, GreetService, GreetServiceExt};
+use proto::workers::heartbeat::v1::HeartbeatServiceExt;
 use proto::workers::reverse::v1::{
     ReverseRequestView, ReverseResponse, ReverseService, ReverseServiceExt,
 };
@@ -29,10 +32,16 @@ pub(crate) mod proto {
     include!(concat!(env!("OUT_DIR"), "/_connectrpc.rs"));
 }
 
+mod clock;
+mod echo;
+mod heartbeat;
 mod middleware;
 mod routes;
 mod todo;
 
+use clock::Clock;
+use echo::Echoer;
+use heartbeat::Heartbeat;
 use middleware::{RequestId, RequestIdLayer};
 use todo::TodoServer;
 
@@ -102,6 +111,9 @@ async fn fetch(
     let router = RpcRouter::new();
     let router = Arc::new(Greeter).register(router);
     let router = Arc::new(Reverser).register(router);
+    let router = Arc::new(Clock).register(router);
+    let router = Arc::new(Echoer).register(router);
+    let router = Arc::new(Heartbeat).register(router);
     let router = register_todo_service(router, &env).await?;
     let mut svc = LAYER.layer(ConnectRpcService::new(router));
     let response = svc.call(req).await.unwrap();

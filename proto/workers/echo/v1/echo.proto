@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package workers.echo.v1;
+
+service EchoService {
+  // For each request, emits a response echoing the text with a
+  // monotonically increasing sequence. Closes on client half-close.
+  rpc Echo(stream EchoRequest) returns (stream EchoResponse);
+}
+
+message EchoRequest {
+  string text = 1;
+}
+
+message EchoResponse {
+  string text = 1;
+  uint32 sequence = 2;
+}

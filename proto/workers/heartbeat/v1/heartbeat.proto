@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package workers.heartbeat.v1;
+
+service HeartbeatService {
+  // Emits (sequence=0, note="open") before reading any request, then echoes
+  // each request as (sequence=N, note=request.note), then emits
+  // (sequence=last+1, note="close") on client half-close.
+  rpc Heartbeat(stream HeartbeatRequest) returns (stream HeartbeatResponse);
+}
+
+message HeartbeatRequest {
+  string note = 1;
+}
+
+message HeartbeatResponse {
+  uint32 sequence = 1;
+  string note = 2;
+}

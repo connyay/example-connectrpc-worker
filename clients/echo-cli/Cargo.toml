@@ -1,0 +1,19 @@
+[package]
+name = "echo-cli"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.88"
+publish = false
+
+[dependencies]
+connectrpc = { version = "0.3", default-features = false, features = ["client", "gzip"] }
+buffa = { version = "0.3", features = ["json"] }
+buffa-types = { version = "0.3", features = ["json"] }
+serde = { version = "1", features = ["derive"] }
+http = "1"
+http-body = "1"
+futures = "0.3"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+
+[build-dependencies]
+connectrpc-build = { version = "0.3" }
