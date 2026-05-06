@@ -7,7 +7,7 @@ use std::fmt;
 
 use buffa::MessageField;
 use buffa::view::OwnedView;
-use connectrpc::{ConnectError, Context as RpcContext};
+use connectrpc::{ConnectError, RequestContext, Response, ServiceResult};
 
 use crate::proto::workers::todo::v1::{
     CreateTodoRequestView, CreateTodoResponse, DeleteTodoRequestView, DeleteTodoResponse,
@@ -341,58 +341,49 @@ fn not_found(id: i64) -> ConnectError {
 impl<S: TodoStore> TodoService for TodoServer<S> {
     async fn create_todo(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<CreateTodoRequestView<'static>>,
-    ) -> Result<(CreateTodoResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<CreateTodoResponse> {
         if request.text.is_empty() {
             return Err(ConnectError::invalid_argument("text must not be empty"));
         }
         let record = self.store.create(request.text.to_owned()).await?;
-        Ok((
-            CreateTodoResponse {
-                todo: MessageField::some(record.into()),
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Response::ok(CreateTodoResponse {
+            todo: MessageField::some(record.into()),
+            ..Default::default()
+        })
     }
 
     async fn get_todo(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<GetTodoRequestView<'static>>,
-    ) -> Result<(GetTodoResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<GetTodoResponse> {
         let id = request.id;
         let record = self.store.get(id).await?.ok_or_else(|| not_found(id))?;
-        Ok((
-            GetTodoResponse {
-                todo: MessageField::some(record.into()),
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Response::ok(GetTodoResponse {
+            todo: MessageField::some(record.into()),
+            ..Default::default()
+        })
     }
 
     async fn list_todos(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         _request: OwnedView<ListTodosRequestView<'static>>,
-    ) -> Result<(ListTodosResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<ListTodosResponse> {
         let records = self.store.list().await?;
-        Ok((
-            ListTodosResponse {
-                todos: records.into_iter().map(Into::into).collect(),
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Response::ok(ListTodosResponse {
+            todos: records.into_iter().map(Into::into).collect(),
+            ..Default::default()
+        })
     }
 
     async fn update_todo(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<UpdateTodoRequestView<'static>>,
-    ) -> Result<(UpdateTodoResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<UpdateTodoResponse> {
         let id = request.id;
         let text = request.text.map(|t| t.to_owned());
         let done = request.done;
@@ -401,25 +392,22 @@ impl<S: TodoStore> TodoService for TodoServer<S> {
             .update(id, text, done)
             .await?
             .ok_or_else(|| not_found(id))?;
-        Ok((
-            UpdateTodoResponse {
-                todo: MessageField::some(record.into()),
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Response::ok(UpdateTodoResponse {
+            todo: MessageField::some(record.into()),
+            ..Default::default()
+        })
     }
 
     async fn delete_todo(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<DeleteTodoRequestView<'static>>,
-    ) -> Result<(DeleteTodoResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<DeleteTodoResponse> {
         let id = request.id;
         if !self.store.delete(id).await? {
             return Err(not_found(id));
         }
-        Ok((DeleteTodoResponse::default(), ctx))
+        Response::ok(DeleteTodoResponse::default())
     }
 }
 
@@ -449,10 +437,12 @@ mod tests {
             text: text.into(),
             ..Default::default()
         };
-        let (resp, _) = srv
-            .create_todo(RpcContext::default(), view(&req))
+        let resp: CreateTodoResponse = srv
+            .create_todo(RequestContext::default(), view(&req))
             .await
-            .expect("create_todo");
+            .expect("create_todo")
+            .body
+            .into();
         resp.todo.into_option().expect("todo present")
     }
 
@@ -476,7 +466,7 @@ mod tests {
         block_on(async {
             let req = CreateTodoRequest::default();
             let err = srv
-                .create_todo(RpcContext::default(), view(&req))
+                .create_todo(RequestContext::default(), view(&req))
                 .await
                 .expect_err("empty text must be rejected");
             assert_eq!(err.code, ErrorCode::InvalidArgument);
@@ -492,10 +482,12 @@ mod tests {
                 id: created.id,
                 ..Default::default()
             };
-            let (resp, _) = srv
-                .get_todo(RpcContext::default(), view(&req))
+            let resp: GetTodoResponse = srv
+                .get_todo(RequestContext::default(), view(&req))
                 .await
-                .unwrap();
+                .unwrap()
+                .body
+                .into();
             let fetched = resp.todo.into_option().unwrap();
             assert_eq!(fetched.id, created.id);
             assert_eq!(fetched.text, "read book");
@@ -511,7 +503,7 @@ mod tests {
                 ..Default::default()
             };
             let err = srv
-                .get_todo(RpcContext::default(), view(&req))
+                .get_todo(RequestContext::default(), view(&req))
                 .await
                 .expect_err("must not find todo 999");
             assert_eq!(err.code, ErrorCode::NotFound);
@@ -526,10 +518,12 @@ mod tests {
             create(&srv, "two").await;
             create(&srv, "three").await;
             let req = ListTodosRequest::default();
-            let (resp, _) = srv
-                .list_todos(RpcContext::default(), view(&req))
+            let resp: ListTodosResponse = srv
+                .list_todos(RequestContext::default(), view(&req))
                 .await
-                .unwrap();
+                .unwrap()
+                .body
+                .into();
             let ids: Vec<i64> = resp.todos.iter().map(|t| t.id).collect();
             let texts: Vec<&str> = resp.todos.iter().map(|t| t.text.as_str()).collect();
             assert_eq!(ids, vec![1, 2, 3]);
@@ -542,10 +536,12 @@ mod tests {
         let srv = server();
         block_on(async {
             let req = ListTodosRequest::default();
-            let (resp, _) = srv
-                .list_todos(RpcContext::default(), view(&req))
+            let resp: ListTodosResponse = srv
+                .list_todos(RequestContext::default(), view(&req))
                 .await
-                .unwrap();
+                .unwrap()
+                .body
+                .into();
             assert!(resp.todos.is_empty());
         });
     }
@@ -561,10 +557,12 @@ mod tests {
                 done: None,
                 ..Default::default()
             };
-            let (resp, _) = srv
-                .update_todo(RpcContext::default(), view(&req))
+            let resp: UpdateTodoResponse = srv
+                .update_todo(RequestContext::default(), view(&req))
                 .await
-                .unwrap();
+                .unwrap()
+                .body
+                .into();
             let updated = resp.todo.into_option().unwrap();
             assert_eq!(updated.text, "new");
             assert!(!updated.done);
@@ -582,10 +580,12 @@ mod tests {
                 done: Some(true),
                 ..Default::default()
             };
-            let (resp, _) = srv
-                .update_todo(RpcContext::default(), view(&req))
+            let resp: UpdateTodoResponse = srv
+                .update_todo(RequestContext::default(), view(&req))
                 .await
-                .unwrap();
+                .unwrap()
+                .body
+                .into();
             let updated = resp.todo.into_option().unwrap();
             assert_eq!(updated.text, "task");
             assert!(updated.done);
@@ -602,7 +602,7 @@ mod tests {
                 ..Default::default()
             };
             let err = srv
-                .update_todo(RpcContext::default(), view(&req))
+                .update_todo(RequestContext::default(), view(&req))
                 .await
                 .expect_err("must not update missing todo");
             assert_eq!(err.code, ErrorCode::NotFound);
@@ -618,7 +618,7 @@ mod tests {
                 id: created.id,
                 ..Default::default()
             };
-            srv.delete_todo(RpcContext::default(), view(&req))
+            srv.delete_todo(RequestContext::default(), view(&req))
                 .await
                 .expect("delete");
             let get_req = GetTodoRequest {
@@ -626,7 +626,7 @@ mod tests {
                 ..Default::default()
             };
             let err = srv
-                .get_todo(RpcContext::default(), view(&get_req))
+                .get_todo(RequestContext::default(), view(&get_req))
                 .await
                 .expect_err("get must fail after delete");
             assert_eq!(err.code, ErrorCode::NotFound);
@@ -642,7 +642,7 @@ mod tests {
                 ..Default::default()
             };
             let err = srv
-                .delete_todo(RpcContext::default(), view(&req))
+                .delete_todo(RequestContext::default(), view(&req))
                 .await
                 .expect_err("must not delete missing todo");
             assert_eq!(err.code, ErrorCode::NotFound);

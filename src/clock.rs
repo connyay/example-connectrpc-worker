@@ -1,10 +1,7 @@
 //! Server-streaming Clock service.
 
-use std::pin::Pin;
-
 use buffa::view::OwnedView;
-use connectrpc::{ConnectError, Context as RpcContext};
-use futures::Stream;
+use connectrpc::{ConnectError, RequestContext, Response, ServiceResult, ServiceStream};
 
 use crate::proto::workers::clock::v1::{ClockService, TickRequestView, TickResponse};
 
@@ -15,15 +12,9 @@ const MAX_TICKS: u32 = 1024;
 impl ClockService for Clock {
     async fn tick(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<TickRequestView<'static>>,
-    ) -> Result<
-        (
-            Pin<Box<dyn Stream<Item = Result<TickResponse, ConnectError>> + Send>>,
-            RpcContext,
-        ),
-        ConnectError,
-    > {
+    ) -> ServiceResult<ServiceStream<TickResponse>> {
         let count = request.count;
         if count > MAX_TICKS {
             return Err(ConnectError::invalid_argument(format!(
@@ -36,7 +27,7 @@ impl ClockService for Clock {
                 ..Default::default()
             })
         }));
-        Ok((Box::pin(stream), ctx))
+        Response::stream_ok(stream)
     }
 }
 
@@ -55,8 +46,8 @@ mod tests {
                 ..Default::default()
             };
             let view = OwnedView::<TickRequestView<'static>>::from_owned(&req).expect("build view");
-            let (stream, _ctx) = Clock.tick(RpcContext::default(), view).await?;
-            stream.collect::<Vec<_>>().await.into_iter().collect()
+            let resp = Clock.tick(RequestContext::default(), view).await?;
+            resp.body.collect::<Vec<_>>().await.into_iter().collect()
         })
     }
 
@@ -80,7 +71,7 @@ mod tests {
                 ..Default::default()
             };
             let view = OwnedView::<TickRequestView<'static>>::from_owned(&req).unwrap();
-            Clock.tick(RpcContext::default(), view).await.err()
+            Clock.tick(RequestContext::default(), view).await.err()
         })
         .expect("should reject");
         assert_eq!(err.code, connectrpc::ErrorCode::InvalidArgument);

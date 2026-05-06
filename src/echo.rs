@@ -3,7 +3,7 @@
 use std::pin::Pin;
 
 use buffa::view::OwnedView;
-use connectrpc::{ConnectError, Context as RpcContext};
+use connectrpc::{ConnectError, RequestContext, Response, ServiceResult, ServiceStream};
 use futures::{Stream, StreamExt as _};
 
 use crate::proto::workers::echo::v1::{EchoRequestView, EchoResponse, EchoService};
@@ -13,19 +13,13 @@ pub struct Echoer;
 impl EchoService for Echoer {
     async fn echo(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         requests: Pin<
             Box<
                 dyn Stream<Item = Result<OwnedView<EchoRequestView<'static>>, ConnectError>> + Send,
             >,
         >,
-    ) -> Result<
-        (
-            Pin<Box<dyn Stream<Item = Result<EchoResponse, ConnectError>> + Send>>,
-            RpcContext,
-        ),
-        ConnectError,
-    > {
+    ) -> ServiceResult<ServiceStream<EchoResponse>> {
         let responses = futures::stream::unfold((requests, 0u32), |(mut s, seq)| async move {
             match s.next().await {
                 Some(Ok(view)) => {
@@ -40,7 +34,7 @@ impl EchoService for Echoer {
                 None => None,
             }
         });
-        Ok((Box::pin(responses), ctx))
+        Response::stream_ok(responses)
     }
 }
 
@@ -65,11 +59,12 @@ mod tests {
                 .map(|r| Ok(OwnedView::<EchoRequestView<'static>>::from_owned(r).unwrap()))
                 .collect();
             let stream = futures::stream::iter(views);
-            let (out, _ctx) = Echoer
-                .echo(RpcContext::default(), Box::pin(stream))
+            let resp = Echoer
+                .echo(RequestContext::default(), Box::pin(stream))
                 .await
                 .unwrap();
-            out.collect::<Vec<_>>()
+            resp.body
+                .collect::<Vec<_>>()
                 .await
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()

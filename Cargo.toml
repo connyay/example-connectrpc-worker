@@ -17,12 +17,11 @@ worker-macros = { version = "0.8", features = ["http"] }
 
 # ConnectRPC core — disable the default `zstd` and `streaming` features which
 # pull in C bindings / platform bits that don't build on wasm32-unknown-unknown.
-# Keep `gzip` (pure-Rust via miniz_oxide) for response compression.
-connectrpc = { version = "0.3", default-features = false, features = ["gzip"] }
+connectrpc = { version = "0.4", default-features = false }
 
 # Protobuf runtime used by generated code.
-buffa = { version = "0.3", features = ["json"] }
-buffa-types = { version = "0.3", features = ["json"] }
+buffa = { version = "0.5", features = ["json"] }
+buffa-types = { version = "0.5", features = ["json"] }
 
 # Serde derives are required by the generated JSON codec.
 serde = { version = "1", features = ["derive"] }
@@ -39,12 +38,4 @@ futures = "0.3"
 tower = { version = "0.5", features = ["util"] }
 
 [build-dependencies]
-connectrpc-build = { version = "0.3" }
-
-# wasm32 spawn fix from connyay/connect-rust#wasm32-bidi-spawn-local —
-# tokio::spawn → wasm_bindgen_futures::spawn_local in the bidi /
-# client-streaming body reader.
-[patch.crates-io]
-connectrpc = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }
-connectrpc-build = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }
-connectrpc-codegen = { git = "https://github.com/connyay/connect-rust", branch = "wasm32-bidi-spawn-local" }
+connectrpc-build = { version = "0.4" }

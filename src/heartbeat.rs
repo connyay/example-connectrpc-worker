@@ -4,7 +4,7 @@
 use std::pin::Pin;
 
 use buffa::view::OwnedView;
-use connectrpc::{ConnectError, Context as RpcContext};
+use connectrpc::{ConnectError, RequestContext, Response, ServiceResult, ServiceStream};
 use futures::{Stream, StreamExt as _};
 
 use crate::proto::workers::heartbeat::v1::{
@@ -22,20 +22,14 @@ enum State {
 impl HeartbeatService for Heartbeat {
     async fn heartbeat(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         requests: Pin<
             Box<
                 dyn Stream<Item = Result<OwnedView<HeartbeatRequestView<'static>>, ConnectError>>
                     + Send,
             >,
         >,
-    ) -> Result<
-        (
-            Pin<Box<dyn Stream<Item = Result<HeartbeatResponse, ConnectError>> + Send>>,
-            RpcContext,
-        ),
-        ConnectError,
-    > {
+    ) -> ServiceResult<ServiceStream<HeartbeatResponse>> {
         let stream = futures::stream::unfold(
             (requests, State::EmitInitial),
             |(mut s, state)| async move {
@@ -71,7 +65,7 @@ impl HeartbeatService for Heartbeat {
                 }
             },
         );
-        Ok((Box::pin(stream), ctx))
+        Response::stream_ok(stream)
     }
 }
 
@@ -96,11 +90,12 @@ mod tests {
                 .map(|r| Ok(OwnedView::<HeartbeatRequestView<'static>>::from_owned(r).unwrap()))
                 .collect();
             let req_stream = futures::stream::iter(views);
-            let (out, _ctx) = Heartbeat
-                .heartbeat(RpcContext::default(), Box::pin(req_stream))
+            let resp = Heartbeat
+                .heartbeat(RequestContext::default(), Box::pin(req_stream))
                 .await
                 .unwrap();
-            out.collect::<Vec<_>>()
+            resp.body
+                .collect::<Vec<_>>()
                 .await
                 .into_iter()
                 .collect::<Result<Vec<_>, _>>()

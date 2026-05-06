@@ -77,13 +77,43 @@ dependencies = [
 ]
 
 [[package]]
+name = "buffa"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bf099528faaa7841b5e6dec4a421c3983b0893f87600f84f35b033362278153b"
+dependencies = [
+ "base64",
+ "bytes",
+ "hashbrown 0.15.5",
+ "once_cell",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
 name = "buffa-codegen"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4f9ddcb25f0dde4d82e0a1128b0c459feba775e24dfa7cb0c3f4a9d61abfa245"
 dependencies = [
- "buffa",
- "buffa-descriptor",
+ "buffa 0.3.0",
+ "buffa-descriptor 0.3.0",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+ "thiserror",
+]
+
+[[package]]
+name = "buffa-codegen"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a50dd3ca45146a2878eb7854e8c54d1b299d4e0268d3ff1bebf78a15b78982d3"
+dependencies = [
+ "buffa 0.5.0",
+ "buffa-descriptor 0.5.0",
  "prettyplease",
  "proc-macro2",
  "quote",
@@ -97,7 +127,16 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0a0794ed1f8a0c6ab168c70258e21cf74ca7b87a7dd888a0a69745b075f2d351"
 dependencies = [
- "buffa",
+ "buffa 0.3.0",
+]
+
+[[package]]
+name = "buffa-descriptor"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b60f63b38417e539089f6aaca6622a60dbdf8f656663c81e6870ae0788d2060"
+dependencies = [
+ "buffa 0.5.0",
 ]
 
 [[package]]
@@ -106,7 +145,20 @@ version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b4d80c9929af9fcc673653b99f81c1d13aa32c2bb329bb1ef02ec533994389c6"
 dependencies = [
- "buffa",
+ "buffa 0.3.0",
+ "serde",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "buffa-types"
+version = "0.5.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4594a005d815df9a94aa8bb96fe5ba69a7cc3bb437539c9aad33a4d1ec864a15"
+dependencies = [
+ "buffa 0.5.0",
+ "bytes",
  "serde",
  "serde_json",
  "thiserror",
@@ -148,10 +200,10 @@ dependencies = [
 name = "clock-cli"
 version = "0.1.0"
 dependencies = [
- "buffa",
- "buffa-types",
- "connectrpc",
- "connectrpc-build",
+ "buffa 0.3.0",
+ "buffa-types 0.3.0",
+ "connectrpc 0.3.3",
+ "connectrpc-build 0.3.3",
  "futures",
  "http",
  "http-body",
@@ -179,11 +231,12 @@ checksum = "cc14f565cf027a105f7a44ccf9e5b424348421a1d8952a8fc9d499d313107789"
 [[package]]
 name = "connectrpc"
 version = "0.3.3"
-source = "git+https://github.com/connyay/connect-rust?branch=wasm32-bidi-spawn-local#4376cd8020ff053376f9e45d96bdf6974d29ae6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7e9191b8c90cfc0d27f3df209ea83fa1cb1f9b7e81480bc9d89661be41350778"
 dependencies = [
  "async-compression",
  "base64",
- "buffa",
+ "buffa 0.3.0",
  "bytes",
  "flate2",
  "futures",
@@ -201,29 +254,84 @@ dependencies = [
  "tokio-util",
  "tower",
  "tracing",
+]
+
+[[package]]
+name = "connectrpc"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c13a1ab697ef1ae93cc38b62e76ef8e634371967173879d47be9c78cce13e699"
+dependencies = [
+ "base64",
+ "buffa 0.5.0",
+ "bytes",
+ "futures",
+ "http",
+ "http-body",
+ "http-body-util",
+ "percent-encoding",
+ "pin-project",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tokio-util",
+ "tower",
+ "tracing",
  "wasm-bindgen-futures",
 ]
 
 [[package]]
 name = "connectrpc-build"
 version = "0.3.3"
-source = "git+https://github.com/connyay/connect-rust?branch=wasm32-bidi-spawn-local#4376cd8020ff053376f9e45d96bdf6974d29ae6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "591bc832b8d3faef060e435f832a1cf10a71c865dfb49f9874247769b60ef816"
 dependencies = [
  "anyhow",
- "buffa",
- "buffa-codegen",
- "connectrpc-codegen",
+ "buffa 0.3.0",
+ "buffa-codegen 0.3.0",
+ "connectrpc-codegen 0.3.3",
+ "tempfile",
+]
+
+[[package]]
+name = "connectrpc-build"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e685634b5cabe1fbd3698d5da7dcae512152a1b7e5128eff6493920cf83b72f8"
+dependencies = [
+ "anyhow",
+ "buffa 0.5.0",
+ "buffa-codegen 0.5.0",
+ "connectrpc-codegen 0.4.0",
  "tempfile",
 ]
 
 [[package]]
 name = "connectrpc-codegen"
 version = "0.3.3"
-source = "git+https://github.com/connyay/connect-rust?branch=wasm32-bidi-spawn-local#4376cd8020ff053376f9e45d96bdf6974d29ae6a"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "109a2352193792931d41e5cb3b048985371d5c6505f736f9b9a7ae606d5a0050"
 dependencies = [
  "anyhow",
- "buffa",
- "buffa-codegen",
+ "buffa 0.3.0",
+ "buffa-codegen 0.3.0",
+ "heck",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "connectrpc-codegen"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b3b8cec56e17c3cb4f02083b2607ff1a9a17566305cec807bd9d82a529e19bc0"
+dependencies = [
+ "anyhow",
+ "buffa 0.5.0",
+ "buffa-codegen 0.5.0",
  "heck",
  "prettyplease",
  "proc-macro2",
@@ -255,10 +363,10 @@ dependencies = [
 name = "echo-cli"
 version = "0.1.0"
 dependencies = [
- "buffa",
- "buffa-types",
- "connectrpc",
- "connectrpc-build",
+ "buffa 0.3.0",
+ "buffa-types 0.3.0",
+ "connectrpc 0.3.3",
+ "connectrpc-build 0.3.3",
  "futures",
  "http",
  "http-body",
@@ -459,10 +567,10 @@ checksum = "4f467dd6dccf739c208452f8014c75c18bb8301b050ad1cfb27153803edb0f51"
 name = "heartbeat-cli"
 version = "0.1.0"
 dependencies = [
- "buffa",
- "buffa-types",
- "connectrpc",
- "connectrpc-build",
+ "buffa 0.3.0",
+ "buffa-types 0.3.0",
+ "connectrpc 0.3.3",
+ "connectrpc-build 0.3.3",
  "futures",
  "http",
  "http-body",
@@ -1523,11 +1631,11 @@ dependencies = [
 name = "workers-connectrpc"
 version = "0.1.0"
 dependencies = [
- "buffa",
- "buffa-types",
+ "buffa 0.5.0",
+ "buffa-types 0.5.0",
  "bytes",
- "connectrpc",
- "connectrpc-build",
+ "connectrpc 0.4.0",
+ "connectrpc-build 0.4.0",
  "futures",
  "http",
  "http-body",

@@ -6,10 +6,12 @@
 //! shapes `connectrpc::ConnectRpcService` consumes and produces. So the fetch
 //! handler's job is one line: drive the tower service and return its response.
 
+#![allow(refining_impl_trait)]
+
 use std::sync::{Arc, LazyLock};
 
 use connectrpc::{
-    ConnectError, ConnectRpcBody, ConnectRpcService, Context as RpcContext, Router as RpcRouter,
+    ConnectRpcBody, ConnectRpcService, RequestContext, Response, Router as RpcRouter, ServiceResult,
 };
 use tower::{Layer, Service};
 use worker::{Context, Env, HttpRequest, event};
@@ -29,7 +31,7 @@ use proto::workers::todo::v1::TodoServiceExt;
 // against this module name.
 #[allow(warnings, unused)]
 pub(crate) mod proto {
-    include!(concat!(env!("OUT_DIR"), "/_connectrpc.rs"));
+    connectrpc::include_generated!();
 }
 
 mod clock;
@@ -50,27 +52,25 @@ struct Greeter;
 impl GreetService for Greeter {
     async fn greet(
         &self,
-        mut ctx: RpcContext,
+        ctx: RequestContext,
         request: OwnedView<GreetRequestView<'static>>,
-    ) -> Result<(GreetResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<GreetResponse> {
         let name = if request.name.is_empty() {
             "world"
         } else {
             request.name
         };
+        let mut res = Response::new(GreetResponse {
+            greeting: format!("Hello, {name}!"),
+            ..Default::default()
+        });
         if let Some(id) = ctx.extensions.get::<RequestId>() {
-            ctx.set_trailer(
+            res = res.with_trailer(
                 http::header::HeaderName::from_static(middleware::HEADER_NAME),
                 id.0.clone(),
             );
         }
-        Ok((
-            GreetResponse {
-                greeting: format!("Hello, {name}!"),
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Ok(res)
     }
 }
 
@@ -79,18 +79,15 @@ struct Reverser;
 impl ReverseService for Reverser {
     async fn reverse(
         &self,
-        ctx: RpcContext,
+        _ctx: RequestContext,
         request: OwnedView<ReverseRequestView<'static>>,
-    ) -> Result<(ReverseResponse, RpcContext), ConnectError> {
+    ) -> ServiceResult<ReverseResponse> {
         // Codepoint reversal; grapheme clusters (emoji with combining marks) will split.
         let reversed: String = request.text.chars().rev().collect();
-        Ok((
-            ReverseResponse {
-                reversed,
-                ..Default::default()
-            },
-            ctx,
-        ))
+        Response::ok(ReverseResponse {
+            reversed,
+            ..Default::default()
+        })
     }
 }
 
@@ -164,9 +161,10 @@ mod tests {
         };
         let view = OwnedView::<GreetRequestView<'static>>::from_owned(&req)
             .expect("build GreetRequest view");
-        let (resp, _) =
-            block_on(Greeter.greet(RpcContext::default(), view)).expect("greet should not error");
-        resp
+        block_on(Greeter.greet(RequestContext::default(), view))
+            .expect("greet should not error")
+            .body
+            .into()
     }
 
     fn reverse(text: &str) -> ReverseResponse {
@@ -176,9 +174,10 @@ mod tests {
         };
         let view = OwnedView::<ReverseRequestView<'static>>::from_owned(&req)
             .expect("build ReverseRequest view");
-        let (resp, _) = block_on(Reverser.reverse(RpcContext::default(), view))
-            .expect("reverse should not error");
-        resp
+        block_on(Reverser.reverse(RequestContext::default(), view))
+            .expect("reverse should not error")
+            .body
+            .into()
     }
 
     #[test]
@@ -222,7 +221,7 @@ mod tests {
 
     #[test]
     fn greet_echoes_request_id_trailer_when_present() {
-        let mut ctx = RpcContext::default();
+        let mut ctx = RequestContext::default();
         ctx.extensions
             .insert(RequestId(http::HeaderValue::from_static("trace-xyz")));
         let req = GreetRequest {
@@ -230,9 +229,9 @@ mod tests {
             ..Default::default()
         };
         let view = OwnedView::<GreetRequestView<'static>>::from_owned(&req).unwrap();
-        let (_, ctx) = block_on(Greeter.greet(ctx, view)).unwrap();
+        let resp = block_on(Greeter.greet(ctx, view)).unwrap();
         assert_eq!(
-            ctx.trailers
+            resp.trailers
                 .get("x-request-id")
                 .expect("trailer must be set")
                 .to_str()
@@ -248,8 +247,11 @@ mod tests {
         assert!(!block_on(async {
             let req = GreetRequest::default();
             let view = OwnedView::<GreetRequestView<'static>>::from_owned(&req).unwrap();
-            let (_, ctx) = Greeter.greet(RpcContext::default(), view).await.unwrap();
-            ctx.trailers.contains_key("x-request-id")
+            let resp = Greeter
+                .greet(RequestContext::default(), view)
+                .await
+                .unwrap();
+            resp.trailers.contains_key("x-request-id")
         }));
     }
 }
